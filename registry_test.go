@@ -40,8 +40,8 @@ var _ = Describe("Registry", func() {
 		Describe("Given a Key and a []simpleRegistryMetric", func() {
 			Context("When finding a Key that exist in []simpleRegistryMetric", func() {
 				It("Then the simpleRegistryMetric should be returned", func() {
-					k1 := map[string]string{"a": "1", "c": "2"}
-					k2 := map[string]string{"a": "1", "b": "2"}
+					k1 := map[string]string{"a": "1", "b": "2"}
+					k2 := map[string]string{"a": "1", "c": "2"}
 					k3 := map[string]string{"a": "1"}
 					v3 := 3
 
@@ -84,6 +84,90 @@ var _ = Describe("Registry", func() {
 
 					_, err := getMetric(r, k3)
 					Expect(err).To(Equal(keyNotFound))
+				})
+			})
+		})
+		Describe("Given user wants to GET a value", func() {
+			Context("When key exists", func() {
+				It("Then the value is returned", func() {
+					k1 := map[string]string{"a": "1", "b": "2"}
+					k2 := map[string]string{"a": "1", "c": "2"}
+					v2 := 2
+
+					r := NewSimpleRegistry()
+					r.registry = []*simpleRegistryMetric{
+						&simpleRegistryMetric{
+							key:   k1,
+							value: 1,
+						},
+						&simpleRegistryMetric{
+							key:   k2,
+							value: v2,
+						},
+					}
+					Expect(r.Get(k2)).To(Equal(v2))
+				})
+			})
+			Context("When key does not exists", func() {
+				It("Then the value is returned", func() {
+					k1 := map[string]string{"a": "1", "b": "2"}
+					k2 := map[string]string{"a": "1", "c": "2"}
+					k3 := map[string]string{"a": "1"}
+
+					r := NewSimpleRegistry()
+					r.registry = []*simpleRegistryMetric{
+						&simpleRegistryMetric{
+							key:   k1,
+							value: 1,
+						},
+						&simpleRegistryMetric{
+							key:   k2,
+							value: 2,
+						},
+					}
+					Expect(r.Get(k3)).To(BeNil())
+				})
+			})
+		})
+		Describe("Given user wants to Set a value", func() {
+			Context("When key exists", func() {
+				It("Then the value is replaced", func() {
+					k1 := map[string]string{"a": "1", "b": "2"}
+					k2 := map[string]string{"a": "1", "c": "2"}
+					v2 := 4
+
+					r := NewSimpleRegistry()
+					r.registry = []*simpleRegistryMetric{
+						&simpleRegistryMetric{
+							key:   k1,
+							value: 1,
+						},
+						&simpleRegistryMetric{
+							key:   k2,
+							value: 2,
+						},
+					}
+					r.Set(k2, v2)
+
+					Expect(r.Get(k2)).To(Equal(v2))
+				})
+			})
+			Context("When key does not exists", func() {
+				It("Then the key and value is inserted", func() {
+					k1 := map[string]string{"a": "1", "b": "2"}
+					k2 := map[string]string{"a": "1", "c": "2"}
+					v2 := 4
+
+					r := NewSimpleRegistry()
+					r.registry = []*simpleRegistryMetric{
+						&simpleRegistryMetric{
+							key:   k1,
+							value: 1,
+						},
+					}
+					r.Set(k2, v2)
+
+					Expect(r.Get(k2)).To(Equal(v2))
 				})
 			})
 		})

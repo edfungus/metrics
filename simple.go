@@ -38,9 +38,19 @@ func (r *SimpleRegistry) Filter(k Key) []interface{} {
 	return ks
 }
 
-// Set
+// Set replaces or creates new entry with key and value
 func (r *SimpleRegistry) Set(k Key, i interface{}) {
-
+	m, err := getMetric(r.registry, k)
+	if err == keyNotFound {
+		m := &simpleRegistryMetric{
+			key:   k,
+			value: i,
+		}
+		r.registry = append(r.registry, m)
+	}
+	if m != nil {
+		m.value = i
+	}
 }
 
 func (r *SimpleRegistry) Delete(k Key) {
