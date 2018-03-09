@@ -25,7 +25,7 @@ func NewSimpleRegistry() *SimpleRegistry {
 
 // Get returns the metric that matches the key exactly
 func (r *SimpleRegistry) Get(k Key) interface{} {
-	v, err := getMetric(r.registry, k)
+	v, _, err := getMetric(r.registry, k)
 	if err != nil {
 		return nil
 	}
@@ -40,7 +40,7 @@ func (r *SimpleRegistry) Filter(k Key) []interface{} {
 
 // Set replaces or creates new entry with key and value
 func (r *SimpleRegistry) Set(k Key, i interface{}) {
-	m, err := getMetric(r.registry, k)
+	m, _, err := getMetric(r.registry, k)
 	if err == keyNotFound {
 		m := &simpleRegistryMetric{
 			key:   k,
@@ -53,17 +53,22 @@ func (r *SimpleRegistry) Set(k Key, i interface{}) {
 	}
 }
 
+// Delete removes an entry from the registry
 func (r *SimpleRegistry) Delete(k Key) {
-
+	_, i, err := getMetric(r.registry, k)
+	if err == keyNotFound {
+		return
+	}
+	r.registry = append(r.registry[:i], r.registry[i+1:]...)
 }
 
-func getMetric(ms []*simpleRegistryMetric, k Key) (*simpleRegistryMetric, error) {
-	for _, m := range ms {
+func getMetric(ms []*simpleRegistryMetric, k Key) (*simpleRegistryMetric, int, error) {
+	for i, m := range ms {
 		if isEquals(m.key, k) {
-			return m, nil
+			return m, i, nil
 		}
 	}
-	return nil, keyNotFound
+	return nil, 0, keyNotFound
 }
 
 func isEquals(k1 Key, k2 Key) bool {

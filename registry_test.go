@@ -60,8 +60,9 @@ var _ = Describe("Registry", func() {
 						},
 					}
 
-					m, err := getMetric(r, k3)
+					m, i, err := getMetric(r, k3)
 					Expect(err).To(BeNil())
+					Expect(i).To(Equal(2))
 					Expect(m.value).To(Equal(v3))
 				})
 			})
@@ -82,7 +83,7 @@ var _ = Describe("Registry", func() {
 						},
 					}
 
-					_, err := getMetric(r, k3)
+					_, _, err := getMetric(r, k3)
 					Expect(err).To(Equal(keyNotFound))
 				})
 			})
@@ -129,7 +130,7 @@ var _ = Describe("Registry", func() {
 				})
 			})
 		})
-		Describe("Given user wants to Set a value", func() {
+		Describe("Given user wants to SET a value", func() {
 			Context("When key exists", func() {
 				It("Then the value is replaced", func() {
 					k1 := map[string]string{"a": "1", "b": "2"}
@@ -168,6 +169,55 @@ var _ = Describe("Registry", func() {
 					r.Set(k2, v2)
 
 					Expect(r.Get(k2)).To(Equal(v2))
+				})
+			})
+		})
+		Describe("Given user wants to DELETE a value", func() {
+			Context("When key exists", func() {
+				It("Then the value is deleted", func() {
+					k1 := map[string]string{"a": "1", "b": "2"}
+					k2 := map[string]string{"a": "1", "c": "2"}
+
+					r := NewSimpleRegistry()
+					r.registry = []*simpleRegistryMetric{
+						&simpleRegistryMetric{
+							key:   k1,
+							value: 1,
+						},
+						&simpleRegistryMetric{
+							key:   k2,
+							value: 2,
+						},
+					}
+					r.Delete(k2)
+
+					Expect(r.registry).To(HaveLen(1))
+					Expect(r.Get(k1)).ToNot(BeNil())
+					Expect(r.Get(k2)).To(BeNil())
+				})
+			})
+			Context("When key does not exists", func() {
+				It("Then the key and value is inserted", func() {
+					k1 := map[string]string{"a": "1", "b": "2"}
+					k2 := map[string]string{"a": "1", "c": "2"}
+					k3 := map[string]string{"a": "1"}
+
+					r := NewSimpleRegistry()
+					r.registry = []*simpleRegistryMetric{
+						&simpleRegistryMetric{
+							key:   k1,
+							value: 1,
+						},
+						&simpleRegistryMetric{
+							key:   k2,
+							value: 2,
+						},
+					}
+					r.Delete(k3)
+
+					Expect(r.registry).To(HaveLen(2))
+					Expect(r.Get(k1)).ToNot(BeNil())
+					Expect(r.Get(k2)).ToNot(BeNil())
 				})
 			})
 		})
