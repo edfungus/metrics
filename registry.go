@@ -4,7 +4,7 @@ package registry
 type Registry interface {
 	Get(k Key) interface{}
 	Filter(k Key) []interface{}
-	Set(k Key, i interface{}) error
+	Set(k Key, i interface{})
 	Delete(k Key)
 }
 
