@@ -33,8 +33,16 @@ func (r *SimpleRegistry) Get(k Key) interface{} {
 }
 
 // Filter returns a list of metrics that matches the key
-func (r *SimpleRegistry) Filter(k Key) []interface{} {
-	ks := []interface{}{}
+func (r *SimpleRegistry) Filter(k Key) []Entry {
+	ks := []Entry{}
+	for _, m := range r.registry {
+		if isSubset(k, m.key) {
+			ks = append(ks, Entry{
+				Key:   m.key,
+				Value: m.value,
+			})
+		}
+	}
 	return ks
 }
 
@@ -75,12 +83,17 @@ func isEquals(k1 Key, k2 Key) bool {
 	if len(k1) != len(k2) {
 		return false
 	}
-	for key := range k1 {
-		v2, ok := k2[key]
+	return isSubset(k1, k2)
+}
+
+// isSubset checks whether of not all of the Keys in k is in the set
+func isSubset(k Key, set Key) bool {
+	for key := range k {
+		sv, ok := set[key]
 		if !ok {
 			return false
 		}
-		if v2 != k1[key] {
+		if sv != k[key] {
 			return false
 		}
 	}

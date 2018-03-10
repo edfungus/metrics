@@ -36,6 +36,20 @@ var _ = Describe("Registry", func() {
 					Expect(isEquals(k1, k2)).To(BeFalse())
 				})
 			})
+			Context("When the Key contains a subset of another Key", func() {
+				It("Then isSubset should return true", func() {
+					k1 := map[string]string{"a": "1", "b": "2", "c": "3"}
+					k2 := map[string]string{"a": "1", "b": "2"}
+					Expect(isSubset(k2, k1)).To(BeTrue())
+				})
+			})
+			Context("When the Key contains a superset of another Key", func() {
+				It("Then isSubset should return false", func() {
+					k1 := map[string]string{"a": "1", "b": "2", "c": "3"}
+					k2 := map[string]string{"a": "1", "b": "2"}
+					Expect(isSubset(k1, k2)).To(BeFalse())
+				})
+			})
 		})
 		Describe("Given a Key and a []simpleRegistryMetric", func() {
 			Context("When finding a Key that exist in []simpleRegistryMetric", func() {
@@ -218,6 +232,52 @@ var _ = Describe("Registry", func() {
 					Expect(r.registry).To(HaveLen(2))
 					Expect(r.Get(k1)).ToNot(BeNil())
 					Expect(r.Get(k2)).ToNot(BeNil())
+				})
+			})
+		})
+		Describe("Given user wants to FILTER for values", func() {
+			Context("When keys exist", func() {
+				It("Then the value is deleted", func() {
+					k1 := map[string]string{"a": "1", "b": "2"}
+					k2 := map[string]string{"a": "1", "c": "2"}
+					k3 := map[string]string{"a": "1"}
+
+					r := NewSimpleRegistry()
+					r.registry = []*simpleRegistryMetric{
+						&simpleRegistryMetric{
+							key:   k1,
+							value: 1,
+						},
+						&simpleRegistryMetric{
+							key:   k2,
+							value: 2,
+						},
+					}
+					v := r.Filter(k3)
+
+					Expect(v).To(HaveLen(len(r.registry)))
+				})
+			})
+			Context("When key does not exists", func() {
+				It("Then the key and value is inserted", func() {
+					k1 := map[string]string{"a": "1", "b": "2"}
+					k2 := map[string]string{"a": "1", "c": "2"}
+					k3 := map[string]string{"a": "2"}
+
+					r := NewSimpleRegistry()
+					r.registry = []*simpleRegistryMetric{
+						&simpleRegistryMetric{
+							key:   k1,
+							value: 1,
+						},
+						&simpleRegistryMetric{
+							key:   k2,
+							value: 2,
+						},
+					}
+					v := r.Filter(k3)
+
+					Expect(v).To(HaveLen(0))
 				})
 			})
 		})
