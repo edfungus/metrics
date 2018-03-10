@@ -4,12 +4,7 @@ import "errors"
 
 // SimpleRegistry is a quick and dirty dumb implementation of the resgistry ... using just for benchmarking!
 type SimpleRegistry struct {
-	registry []*simpleRegistryMetric
-}
-
-type simpleRegistryMetric struct {
-	key   map[string]string
-	value interface{}
+	registry []*Entry
 }
 
 var (
@@ -19,28 +14,25 @@ var (
 // NewSimpleRegistry returns a simple implementation of registry
 func NewSimpleRegistry() *SimpleRegistry {
 	return &SimpleRegistry{
-		registry: []*simpleRegistryMetric{},
+		registry: []*Entry{},
 	}
 }
 
 // Get returns the metric that matches the key exactly
 func (r *SimpleRegistry) Get(k Key) interface{} {
-	v, _, err := getMetric(r.registry, k)
+	e, _, err := getEntry(r.registry, k)
 	if err != nil {
 		return nil
 	}
-	return v.value
+	return e.Value
 }
 
 // Filter returns a list of metrics that matches the key
 func (r *SimpleRegistry) Filter(k Key) []Entry {
 	ks := []Entry{}
-	for _, m := range r.registry {
-		if isSubset(k, m.key) {
-			ks = append(ks, Entry{
-				Key:   m.key,
-				Value: m.value,
-			})
+	for _, e := range r.registry {
+		if isSubset(k, e.Key) {
+			ks = append(ks, *e)
 		}
 	}
 	return ks
@@ -48,32 +40,32 @@ func (r *SimpleRegistry) Filter(k Key) []Entry {
 
 // Set replaces or creates new entry with key and value
 func (r *SimpleRegistry) Set(k Key, i interface{}) {
-	m, _, err := getMetric(r.registry, k)
+	e, _, err := getEntry(r.registry, k)
 	if err == keyNotFound {
-		m := &simpleRegistryMetric{
-			key:   k,
-			value: i,
+		e := &Entry{
+			Key:   k,
+			Value: i,
 		}
-		r.registry = append(r.registry, m)
+		r.registry = append(r.registry, e)
 	}
-	if m != nil {
-		m.value = i
+	if e != nil {
+		e.Value = i
 	}
 }
 
 // Delete removes an entry from the registry
 func (r *SimpleRegistry) Delete(k Key) {
-	_, i, err := getMetric(r.registry, k)
+	_, i, err := getEntry(r.registry, k)
 	if err == keyNotFound {
 		return
 	}
 	r.registry = append(r.registry[:i], r.registry[i+1:]...)
 }
 
-func getMetric(ms []*simpleRegistryMetric, k Key) (*simpleRegistryMetric, int, error) {
-	for i, m := range ms {
-		if isEquals(m.key, k) {
-			return m, i, nil
+func getEntry(es []*Entry, k Key) (*Entry, int, error) {
+	for i, e := range es {
+		if isEquals(e.Key, k) {
+			return e, i, nil
 		}
 	}
 	return nil, 0, keyNotFound

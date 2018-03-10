@@ -59,25 +59,25 @@ var _ = Describe("Registry", func() {
 					k3 := map[string]string{"a": "1"}
 					v3 := 3
 
-					r := []*simpleRegistryMetric{
-						&simpleRegistryMetric{
-							key:   k1,
-							value: 1,
+					r := []*Entry{
+						&Entry{
+							Key:   k1,
+							Value: 1,
 						},
-						&simpleRegistryMetric{
-							key:   k2,
-							value: 2,
+						&Entry{
+							Key:   k2,
+							Value: 2,
 						},
-						&simpleRegistryMetric{
-							key:   k3,
-							value: v3,
+						&Entry{
+							Key:   k3,
+							Value: v3,
 						},
 					}
 
-					m, i, err := getMetric(r, k3)
+					m, i, err := getEntry(r, k3)
 					Expect(err).To(BeNil())
 					Expect(i).To(Equal(2))
-					Expect(m.value).To(Equal(v3))
+					Expect(m.Value).To(Equal(v3))
 				})
 			})
 			Context("When finding a Key that does not exist in []simpleRegistryMetric", func() {
@@ -86,18 +86,18 @@ var _ = Describe("Registry", func() {
 					k2 := map[string]string{"a": "1", "c": "2"}
 					k3 := map[string]string{"a": "1"}
 
-					r := []*simpleRegistryMetric{
-						&simpleRegistryMetric{
-							key:   k1,
-							value: 1,
+					r := []*Entry{
+						&Entry{
+							Key:   k1,
+							Value: 1,
 						},
-						&simpleRegistryMetric{
-							key:   k2,
-							value: 2,
+						&Entry{
+							Key:   k2,
+							Value: 2,
 						},
 					}
 
-					_, _, err := getMetric(r, k3)
+					_, _, err := getEntry(r, k3)
 					Expect(err).To(Equal(keyNotFound))
 				})
 			})
@@ -110,14 +110,14 @@ var _ = Describe("Registry", func() {
 					v2 := 2
 
 					r := NewSimpleRegistry()
-					r.registry = []*simpleRegistryMetric{
-						&simpleRegistryMetric{
-							key:   k1,
-							value: 1,
+					r.registry = []*Entry{
+						&Entry{
+							Key:   k1,
+							Value: 1,
 						},
-						&simpleRegistryMetric{
-							key:   k2,
-							value: v2,
+						&Entry{
+							Key:   k2,
+							Value: v2,
 						},
 					}
 					Expect(r.Get(k2)).To(Equal(v2))
@@ -130,14 +130,14 @@ var _ = Describe("Registry", func() {
 					k3 := map[string]string{"a": "1"}
 
 					r := NewSimpleRegistry()
-					r.registry = []*simpleRegistryMetric{
-						&simpleRegistryMetric{
-							key:   k1,
-							value: 1,
+					r.registry = []*Entry{
+						&Entry{
+							Key:   k1,
+							Value: 1,
 						},
-						&simpleRegistryMetric{
-							key:   k2,
-							value: 2,
+						&Entry{
+							Key:   k2,
+							Value: 2,
 						},
 					}
 					Expect(r.Get(k3)).To(BeNil())
@@ -152,14 +152,14 @@ var _ = Describe("Registry", func() {
 					v2 := 4
 
 					r := NewSimpleRegistry()
-					r.registry = []*simpleRegistryMetric{
-						&simpleRegistryMetric{
-							key:   k1,
-							value: 1,
+					r.registry = []*Entry{
+						&Entry{
+							Key:   k1,
+							Value: 1,
 						},
-						&simpleRegistryMetric{
-							key:   k2,
-							value: 2,
+						&Entry{
+							Key:   k2,
+							Value: 2,
 						},
 					}
 					r.Set(k2, v2)
@@ -174,10 +174,10 @@ var _ = Describe("Registry", func() {
 					v2 := 4
 
 					r := NewSimpleRegistry()
-					r.registry = []*simpleRegistryMetric{
-						&simpleRegistryMetric{
-							key:   k1,
-							value: 1,
+					r.registry = []*Entry{
+						&Entry{
+							Key:   k1,
+							Value: 1,
 						},
 					}
 					r.Set(k2, v2)
@@ -193,14 +193,14 @@ var _ = Describe("Registry", func() {
 					k2 := map[string]string{"a": "1", "c": "2"}
 
 					r := NewSimpleRegistry()
-					r.registry = []*simpleRegistryMetric{
-						&simpleRegistryMetric{
-							key:   k1,
-							value: 1,
+					r.registry = []*Entry{
+						&Entry{
+							Key:   k1,
+							Value: 1,
 						},
-						&simpleRegistryMetric{
-							key:   k2,
-							value: 2,
+						&Entry{
+							Key:   k2,
+							Value: 2,
 						},
 					}
 					r.Delete(k2)
@@ -217,14 +217,14 @@ var _ = Describe("Registry", func() {
 					k3 := map[string]string{"a": "1"}
 
 					r := NewSimpleRegistry()
-					r.registry = []*simpleRegistryMetric{
-						&simpleRegistryMetric{
-							key:   k1,
-							value: 1,
+					r.registry = []*Entry{
+						&Entry{
+							Key:   k1,
+							Value: 1,
 						},
-						&simpleRegistryMetric{
-							key:   k2,
-							value: 2,
+						&Entry{
+							Key:   k2,
+							Value: 2,
 						},
 					}
 					r.Delete(k3)
@@ -243,14 +243,14 @@ var _ = Describe("Registry", func() {
 					k3 := map[string]string{"a": "1"}
 
 					r := NewSimpleRegistry()
-					r.registry = []*simpleRegistryMetric{
-						&simpleRegistryMetric{
-							key:   k1,
-							value: 1,
+					r.registry = []*Entry{
+						&Entry{
+							Key:   k1,
+							Value: 1,
 						},
-						&simpleRegistryMetric{
-							key:   k2,
-							value: 2,
+						&Entry{
+							Key:   k2,
+							Value: 2,
 						},
 					}
 					v := r.Filter(k3)
@@ -265,14 +265,14 @@ var _ = Describe("Registry", func() {
 					k3 := map[string]string{"a": "2"}
 
 					r := NewSimpleRegistry()
-					r.registry = []*simpleRegistryMetric{
-						&simpleRegistryMetric{
-							key:   k1,
-							value: 1,
+					r.registry = []*Entry{
+						&Entry{
+							Key:   k1,
+							Value: 1,
 						},
-						&simpleRegistryMetric{
-							key:   k2,
-							value: 2,
+						&Entry{
+							Key:   k2,
+							Value: 2,
 						},
 					}
 					v := r.Filter(k3)
