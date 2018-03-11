@@ -2,7 +2,17 @@ package registry
 
 import "errors"
 
-// SimpleRegistry is a quick and dirty dumb implementation of the resgistry ... using just for benchmarking!
+/*
+
+	This is probably the most straight forward implmentation. In terms of peformance,
+	it is pretty much linear time for all of the functions. It is going to be
+	O(n + avg key size).
+
+	Also it is not thread safe. Just need to add some locks for that
+
+*/
+
+// SimpleRegistry is a quick and dirty naive implementation of the resgistry
 type SimpleRegistry struct {
 	registry []*Entry
 }

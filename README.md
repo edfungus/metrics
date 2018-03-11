@@ -8,4 +8,6 @@ Be able to write/read metrics with keys that can be filtered on. That way multip
 
 ### Implementations
 
-* simple.go has a straight forward dumb implementation of registry 
+* simple.go has a straight forward naive implementation of registry 
+* better.go has a better(?) implementation of registry
+* cache.go has an implmentation with a cache
