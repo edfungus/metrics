@@ -30,19 +30,19 @@ func NewSimpleRegistry() *SimpleRegistry {
 
 // Get returns the metric that matches the key exactly
 func (r *SimpleRegistry) Get(k Key) interface{} {
-	e, _, err := getEntry(r.registry, k)
+	entry, _, err := getEntry(r.registry, k)
 	if err != nil {
 		return nil
 	}
-	return e.Value
+	return entry.Value
 }
 
 // Filter returns a list of metrics that matches the key
 func (r *SimpleRegistry) Filter(k Key) []Entry {
 	ks := []Entry{}
-	for _, e := range r.registry {
-		if isSubset(k, e.Key) {
-			ks = append(ks, *e)
+	for _, entry := range r.registry {
+		if isSubset(k, entry.Key) {
+			ks = append(ks, *entry)
 		}
 	}
 	return ks
@@ -50,16 +50,16 @@ func (r *SimpleRegistry) Filter(k Key) []Entry {
 
 // Set replaces or creates new entry with key and value
 func (r *SimpleRegistry) Set(k Key, i interface{}) {
-	e, _, err := getEntry(r.registry, k)
+	entry, _, err := getEntry(r.registry, k)
 	if err == keyNotFound {
-		e := &Entry{
+		entry := &Entry{
 			Key:   k,
 			Value: i,
 		}
-		r.registry = append(r.registry, e)
+		r.registry = append(r.registry, entry)
 	}
-	if e != nil {
-		e.Value = i
+	if entry != nil {
+		entry.Value = i
 	}
 }
 
@@ -72,10 +72,10 @@ func (r *SimpleRegistry) Delete(k Key) {
 	r.registry = append(r.registry[:i], r.registry[i+1:]...)
 }
 
-func getEntry(es []*Entry, k Key) (*Entry, int, error) {
-	for i, e := range es {
-		if isEquals(e.Key, k) {
-			return e, i, nil
+func getEntry(entries []*Entry, k Key) (*Entry, int, error) {
+	for i, entry := range entries {
+		if isEquals(entry.Key, k) {
+			return entry, i, nil
 		}
 	}
 	return nil, 0, keyNotFound
@@ -91,11 +91,11 @@ func isEquals(k1 Key, k2 Key) bool {
 // isSubset checks whether of not all of the Keys in k is in the set
 func isSubset(k Key, set Key) bool {
 	for key := range k {
-		sv, ok := set[key]
+		setValues, ok := set[key]
 		if !ok {
 			return false
 		}
-		if sv != k[key] {
+		if setValues != k[key] {
 			return false
 		}
 	}
