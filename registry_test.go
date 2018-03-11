@@ -282,4 +282,70 @@ var _ = Describe("Registry", func() {
 			})
 		})
 	})
+	Describe("Better registry", func() {
+		// yah.... skipping some unit tests here ... :)
+		Describe("Given a user is using the better registry", func() {
+			var br *BetterRegistry
+			var k1, k2, k3 Key
+			Context("Setup better registry", func() {
+				br = NewBetterRegistry()
+				k1 = map[string]string{"a": "1", "b": "2"}
+				k2 = map[string]string{"a": "1", "b": "3"}
+				k3 = map[string]string{"a": "1"}
+				br.Set(k1, "k1")
+				br.Set(k2, "k2")
+				br.Set(k3, "k3")
+			})
+			Context("When users Sets a value", func() {
+				It("Then they should be able to Get the value", func() {
+					Expect(br.Get(k1)).To(Equal("k1"))
+					Expect(br.Get(k2)).To(Equal("k2"))
+					Expect(br.Get(k3)).To(Equal("k3"))
+				})
+			})
+			Context("When users Filters a key", func() {
+				It("Then they should be able to Get the entries with the filtered key", func() {
+					entries := br.Filter(k3)
+					Expect(entries).To(HaveLen(3))
+				})
+			})
+			Context("When users Sets an existing value", func() {
+				It("Then the value should be updated", func() {
+					br.Set(k3, "new k3")
+					Expect(br.Get(k1)).To(Equal("k1"))
+					Expect(br.Get(k2)).To(Equal("k2"))
+					Expect(br.Get(k3)).To(Equal("new k3"))
+					br.Set(k3, "k3")
+				})
+			})
+			Context("When users delete a key that does not exist", func() {
+				It("Then nothing should have changed", func() {
+					k4 := map[string]string{"a": "1", "b": "4"}
+					br.Delete(k4)
+					Expect(br.Get(k1)).To(Equal("k1"))
+					Expect(br.Get(k2)).To(Equal("k2"))
+					Expect(br.Get(k3)).To(Equal("k3"))
+				})
+			})
+			Context("When users delete a key that does exist", func() {
+				It("Then only that key is deleted", func() {
+					br.Delete(k2)
+					Expect(br.Get(k1)).To(Equal("k1"))
+					Expect(br.Get(k2)).To(BeNil())
+					Expect(br.Get(k3)).To(Equal("k3"))
+					br.Set(k2, "k2")
+					Expect(br.Get(k2)).To(Equal("k2"))
+				})
+			})
+			Context("When users delete a key that has unique key field", func() {
+				It("Then that field should be deleted as well", func() {
+					k4 := map[string]string{"a": "1", "b": "2", "c": "4"}
+					br.Set(k4, "4")
+					Expect(br.registry).To(HaveLen(3))
+					br.Delete(k4)
+					Expect(br.registry).To(HaveLen(2))
+				})
+			})
+		})
+	})
 })
