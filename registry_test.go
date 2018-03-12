@@ -1,6 +1,9 @@
 package registry
 
 import (
+	"encoding/base64"
+	"strconv"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -344,6 +347,209 @@ var _ = Describe("Registry", func() {
 					Expect(br.registry).To(HaveLen(3))
 					br.Delete(k4)
 					Expect(br.registry).To(HaveLen(2))
+				})
+			})
+		})
+	})
+	Describe("Even Better registry", func() {
+		Describe("Given a user wants to get a value", func() {
+			Context("When the key exist", func() {
+				var r *CachedRegistry
+				var c *SimpleCache
+				It("Then the value should be returned", func() {
+					r = NewCacheRegistry()
+					c = NewSimpleCache(1)
+					r.getCache = c
+					k := map[string]string{"k1": "v1", "k2": "v2"}
+					he := &hashEntry{
+						keys:  k,
+						value: 1,
+					}
+					r.registry.registry["k1"] = map[string][]*hashEntry{}
+					r.registry.registry["k1"]["v1"] = []*hashEntry{he}
+					r.registry.registry["k2"] = map[string][]*hashEntry{}
+					r.registry.registry["k2"]["v2"] = []*hashEntry{he}
+
+					Expect(r.Get(k)).To(Equal(1))
+				})
+				It("Then it should be placed on the cache", func() {
+					k := map[string]string{"k1": "v1", "k2": "v3"}
+					he := &hashEntry{
+						keys:  k,
+						value: 2,
+					}
+					r.registry.registry["k1"]["v1"] = append(r.registry.registry["k1"]["v1"], he)
+					r.registry.registry["k2"]["v3"] = append(r.registry.registry["k2"]["v3"], he)
+					Expect(r.Get(k)).To(Equal(2))
+					Expect(c.recentKeys).To(HaveLen(1))
+					Expect(c.cache).To(HaveLen(1))
+					Expect(c.cache[c.recentKeys[0]].(hashEntries)[0].value).To(Equal(2))
+				})
+			})
+			Context("When the key does not exist", func() {
+				It("Then the value should be returned", func() {
+					r := NewCacheRegistry()
+					k := map[string]string{"k1": "v1", "k2": "v2"}
+					he := &hashEntry{
+						keys:  k,
+						value: 1,
+					}
+					r.registry.registry["k1"] = map[string][]*hashEntry{}
+					r.registry.registry["k1"]["v1"] = []*hashEntry{he}
+					r.registry.registry["k2"] = map[string][]*hashEntry{}
+					r.registry.registry["k2"]["v2"] = []*hashEntry{he}
+
+					newK := map[string]string{"k1": "v1"}
+					Expect(r.Get(newK)).To(BeNil())
+				})
+			})
+			Context("When the key has already been retrieved", func() {
+				var r *CachedRegistry
+				var c *SimpleCache
+				It("Then the value should be returned from cache", func() {
+					r = NewCacheRegistry()
+					c = NewSimpleCache(1)
+					r.getCache = c
+					k := map[string]string{"k1": "v1", "k2": "v2"}
+					he1 := &hashEntry{
+						keys:  k,
+						value: 1,
+					}
+					he2 := &hashEntry{
+						keys:  k,
+						value: 3,
+					}
+					r.registry.registry["k1"] = map[string][]*hashEntry{}
+					r.registry.registry["k1"]["v1"] = []*hashEntry{he1}
+					r.registry.registry["k2"] = map[string][]*hashEntry{}
+					r.registry.registry["k2"]["v2"] = []*hashEntry{he1}
+
+					Expect(r.Get(k)).To(Equal(1))
+
+					he1.value = 2 // set new value
+					// hack registry so that, if this value is returned, we know the cache was not used
+					r.registry.registry["k1"]["v1"] = []*hashEntry{he2}
+					r.registry.registry["k2"]["v2"] = []*hashEntry{he2}
+					Expect(r.Get(k)).To(Equal(2))
+
+					// force clear cache so we get value from registry
+					c.removeWithHash(toHashString(k))
+					Expect(r.Get(k)).To(Equal(3))
+				})
+				It("Then cache should not have grown", func() {
+					Expect(c.recentKeys).To(HaveLen(1))
+					Expect(c.cache).To(HaveLen(1))
+				})
+			})
+		})
+	})
+	Describe("Cache", func() {
+		Describe("Given a Key", func() {
+			Describe("func sortedKeys", func() {
+				Context("When the Key needs to be hashed", func() {
+					It("Then the Key's keys needed to be sorted", func() {
+						m := map[string]string{"b": "1", "c": "2", "a": "0"}
+						sortedKeys := sortedKeys(m)
+						for i, k := range sortedKeys {
+							Expect(m[k]).To(Equal(strconv.Itoa(i)))
+						}
+					})
+				})
+			})
+			Describe("func toHashString", func() {
+				Context("When the Key needs to be hashed", func() {
+					It("Then Keys with the same value should get the same hash", func() {
+						k1 := map[string]string{"a": "1", "b": "2"}
+						k2 := map[string]string{"b": "2", "a": "1"}
+						hk1 := toHashString(k1)
+						hk2 := toHashString(k2)
+						expectedHash := base64.StdEncoding.EncodeToString([]byte("a")) + ":" + base64.StdEncoding.EncodeToString([]byte("1")) + "," + base64.StdEncoding.EncodeToString([]byte("b")) + ":" + base64.StdEncoding.EncodeToString([]byte("2")) + ","
+						Expect(hk1).To(Equal(expectedHash))
+						Expect(hk1).To(Equal(hk2))
+					})
+				})
+			})
+		})
+		Describe("Given a hash", func() {
+			Describe("func UpdateWithHash", func() {
+				Context("When inserting a new value", func() {
+					It("Then both the cache and recentKeys is updated", func() {
+						c := NewSimpleCache(3)
+						c.cache["k1"] = 1
+						c.cache["k2"] = 2
+						c.recentKeys = []string{"k1", "k2"}
+						c.UpdateWithHash("k3", 3)
+						Expect(c.cache).To(HaveLen(3))
+						Expect(c.recentKeys[2]).To(Equal("k3"))
+					})
+				})
+			})
+			Describe("func removeWithHash", func() {
+				Context("When removing a hash", func() {
+					It("Then both the cache and recentKeys is updated", func() {
+						c := NewSimpleCache(3)
+						c.cache["k1"] = 1
+						c.cache["k2"] = 2
+						c.recentKeys = []string{"k1", "k2"}
+						c.removeWithHash("k2")
+						Expect(c.cache).To(HaveLen(1))
+						Expect(c.recentKeys[0]).To(Equal("k1"))
+					})
+				})
+			})
+			Describe("func addToRecentKeys", func() {
+				Context("When adding a hash to recentkKeys that exist", func() {
+					It("Then the recentKeys should be reorder to reflect the newly added", func() {
+						c := NewSimpleCache(3)
+						c.cache["k1"] = 1
+						c.cache["k2"] = 2
+						c.recentKeys = []string{"k1", "k2"}
+						c.addToRecentKeys("k1")
+						Expect(c.cache).To(HaveLen(2))
+						Expect(c.recentKeys[0]).To(Equal("k2"))
+						Expect(c.recentKeys[1]).To(Equal("k1"))
+					})
+				})
+				Context("When adding a hash to recentkKeys that does not exist", func() {
+					It("Then the key should be added", func() {
+						c := NewSimpleCache(3)
+						c.cache["k1"] = 1
+						c.cache["k2"] = 2
+						c.recentKeys = []string{"k1", "k2"}
+						c.addToRecentKeys("k3")
+						Expect(c.cache).To(HaveLen(2))
+						Expect(c.recentKeys).To(HaveLen(3))
+					})
+				})
+			})
+			Describe("func checkCacheSize", func() {
+				Context("When inserting and cache has reach size limit", func() {
+					It("Then the oldest cache value should be removed and returned", func() {
+						c := NewSimpleCache(1)
+						c.cache["k2"] = 2
+						c.cache["k1"] = 1
+						c.recentKeys = []string{"k1", "k2"}
+						updated, key, value := c.checkCacheSize()
+						Expect(updated).To(BeTrue())
+						Expect(key).To(Equal("k1"))
+						Expect(value).To(Equal(1))
+						Expect(c.cache).To(HaveLen(1))
+						Expect(c.recentKeys).To(HaveLen(1))
+						Expect(c.cache["k2"]).ToNot(BeNil())
+						Expect(c.recentKeys[0]).To(Equal("k2"))
+					})
+				})
+				Context("When inserting and cache has not reach size limit", func() {
+					It("Then cache and recentKeys should not be touched", func() {
+						c := NewSimpleCache(2)
+						c.cache["k1"] = 1
+						c.cache["k2"] = 2
+						c.recentKeys = []string{"k1", "k2"}
+						updated, _, _ := c.checkCacheSize()
+						Expect(updated).To(BeFalse())
+						Expect(c.cache).To(HaveLen(2))
+						Expect(c.recentKeys).To(HaveLen(2))
+					})
 				})
 			})
 		})
