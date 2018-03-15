@@ -44,8 +44,18 @@ func (c *CachedRegistry) Get(k Key) interface{} {
 	return entry.value
 }
 func (c *CachedRegistry) Filter(k Key) []Entry {
-	return []Entry{}
+	entries, err := c.filterCache.Get(k)
+	if err == nil {
+		return toEntryArray(entries)
+	}
+	entries = c.registry.Filter(k)
+	cacheItemRemoved, cacheKeyRemoved, cacheValueRemoved := c.filterCache.UpdateWithKey(k, entries)
+	if cacheItemRemoved {
+		removeFilterCacheKey(cacheKeyRemoved, cacheValueRemoved.(hashEntries))
+	}
+	return toEntryArray(entries)
 }
+
 func (c *CachedRegistry) Set(k Key, i interface{}) {
 
 }
@@ -53,8 +63,41 @@ func (c *CachedRegistry) Delete(k Key) {
 
 }
 
-func removeGetCacheKey(entries hashEntries) {
-	for _, entry := range entries {
+/*
+	We want to update the hashEntry that has been removed from the cache by deleteing the getCacheKey
+		which holds the key for the hashEntry in the cache
+	deleteEntries should really only have one value
+*/
+func removeGetCacheKey(deleteEntries hashEntries) {
+	for _, entry := range deleteEntries {
 		entry.getCacheKey = ""
 	}
+}
+
+/*
+	Given the cache is filled, UpdateWithHash() will give us the cache key and value.
+	The value given will be an array of pointers to hashEntry(s) which we must remove the now deleted cache key
+		from the filterCacheKeys. Therefore this updates the hashEntry(s) that it has been removed from the cache for this key
+*/
+func removeFilterCacheKey(deletedKey string, deleteEntries hashEntries) {
+	for _, entry := range deleteEntries {
+		for i, hash := range entry.filterCacheKeys {
+			if hash == deletedKey {
+				entry.filterCacheKeys = append(entry.filterCacheKeys[:i], entry.filterCacheKeys[i+1:]...)
+				break
+			}
+		}
+	}
+}
+
+// toEntryArray converts hashEntries (in interface or hashEntries type form) to []Entry
+func toEntryArray(i interface{}) []Entry {
+	entries := []Entry{}
+	for _, entry := range i.(hashEntries) {
+		entries = append(entries, Entry{
+			Key:   entry.keys,
+			Value: entry.value,
+		})
+	}
+	return entries
 }

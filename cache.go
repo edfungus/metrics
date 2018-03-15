@@ -12,11 +12,12 @@ const (
 
 type Cache interface {
 	Get(k Key) (interface{}, error)
+	UpdateWithKey(k Key, i interface{}) (cacheItemRemoved bool, cacheKeyRemoved string, cacheValueRemoved interface{})
 	UpdateWithHash(h string, i interface{}) (cacheItemRemoved bool, cacheKeyRemoved string, cacheValueRemoved interface{})
 }
 
 // SimpleCache will store commomly requested Keys and the associated Entries that have those keys
-// The Entries will contain the Key BUT could have more Keys
+// The Entries will contain at least the Key BUT could have more than the specified keys
 type SimpleCache struct {
 	cache      map[string]interface{}
 	recentKeys []string
@@ -39,6 +40,11 @@ func (c *SimpleCache) Get(k Key) (interface{}, error) {
 		return value, nil
 	}
 	return nil, keyNotFound
+}
+
+// UpdateWithKey adds a value to the cache. If cache size will be exceed, the oldest value is removed and also returned
+func (c *SimpleCache) UpdateWithKey(k Key, i interface{}) (cacheItemRemoved bool, cacheKeyRemoved string, cacheValueRemoved interface{}) {
+	return c.UpdateWithHash(toHashString(k), i)
 }
 
 // UpdateWithHash adds a value to the cache. If cache size will be exceed, the oldest value is removed and also returned

@@ -365,10 +365,10 @@ var _ = Describe("Registry", func() {
 						keys:  k,
 						value: 1,
 					}
-					r.registry.registry["k1"] = map[string][]*hashEntry{}
-					r.registry.registry["k1"]["v1"] = []*hashEntry{he}
-					r.registry.registry["k2"] = map[string][]*hashEntry{}
-					r.registry.registry["k2"]["v2"] = []*hashEntry{he}
+					r.registry.registry["k1"] = map[string]hashEntries{}
+					r.registry.registry["k1"]["v1"] = hashEntries{he}
+					r.registry.registry["k2"] = map[string]hashEntries{}
+					r.registry.registry["k2"]["v2"] = hashEntries{he}
 
 					Expect(r.Get(k)).To(Equal(1))
 				})
@@ -387,17 +387,17 @@ var _ = Describe("Registry", func() {
 				})
 			})
 			Context("When the key does not exist", func() {
-				It("Then the value should be returned", func() {
+				It("Then nil should be returned", func() {
 					r := NewCacheRegistry()
 					k := map[string]string{"k1": "v1", "k2": "v2"}
 					he := &hashEntry{
 						keys:  k,
 						value: 1,
 					}
-					r.registry.registry["k1"] = map[string][]*hashEntry{}
-					r.registry.registry["k1"]["v1"] = []*hashEntry{he}
-					r.registry.registry["k2"] = map[string][]*hashEntry{}
-					r.registry.registry["k2"]["v2"] = []*hashEntry{he}
+					r.registry.registry["k1"] = map[string]hashEntries{}
+					r.registry.registry["k1"]["v1"] = hashEntries{he}
+					r.registry.registry["k2"] = map[string]hashEntries{}
+					r.registry.registry["k2"]["v2"] = hashEntries{he}
 
 					newK := map[string]string{"k1": "v1"}
 					Expect(r.Get(newK)).To(BeNil())
@@ -419,22 +419,128 @@ var _ = Describe("Registry", func() {
 						keys:  k,
 						value: 3,
 					}
-					r.registry.registry["k1"] = map[string][]*hashEntry{}
-					r.registry.registry["k1"]["v1"] = []*hashEntry{he1}
-					r.registry.registry["k2"] = map[string][]*hashEntry{}
-					r.registry.registry["k2"]["v2"] = []*hashEntry{he1}
+					r.registry.registry["k1"] = map[string]hashEntries{}
+					r.registry.registry["k1"]["v1"] = hashEntries{he1}
+					r.registry.registry["k2"] = map[string]hashEntries{}
+					r.registry.registry["k2"]["v2"] = hashEntries{he1}
 
 					Expect(r.Get(k)).To(Equal(1))
 
 					he1.value = 2 // set new value
 					// hack registry so that, if this value is returned, we know the cache was not used
-					r.registry.registry["k1"]["v1"] = []*hashEntry{he2}
-					r.registry.registry["k2"]["v2"] = []*hashEntry{he2}
+					r.registry.registry["k1"]["v1"] = hashEntries{he2}
+					r.registry.registry["k2"]["v2"] = hashEntries{he2}
 					Expect(r.Get(k)).To(Equal(2))
 
 					// force clear cache so we get value from registry
 					c.removeWithHash(toHashString(k))
 					Expect(r.Get(k)).To(Equal(3))
+				})
+				It("Then cache should not have grown", func() {
+					Expect(c.recentKeys).To(HaveLen(1))
+					Expect(c.cache).To(HaveLen(1))
+				})
+			})
+		})
+		Describe("Given a user wants to filter a value", func() {
+			Context("When the key exist", func() {
+				var r *CachedRegistry
+				var c *SimpleCache
+				It("Then the value should be returned", func() {
+					r = NewCacheRegistry()
+					c = NewSimpleCache(1)
+					r.filterCache = c
+					k1 := map[string]string{"k1": "v1", "k2": "v2"}
+					he1 := &hashEntry{
+						keys:  k1,
+						value: 1,
+					}
+					k2 := map[string]string{"k1": "v1", "k2": "v3"}
+					he2 := &hashEntry{
+						keys:  k2,
+						value: 1,
+					}
+					k3 := map[string]string{"k1": "v0", "k2": "v2"}
+					he3 := &hashEntry{
+						keys:  k3,
+						value: 3,
+					}
+
+					r.registry.registry["k1"] = map[string]hashEntries{}
+					r.registry.registry["k1"]["v1"] = hashEntries{he1, he2}
+					r.registry.registry["k1"]["v0"] = hashEntries{he3}
+					r.registry.registry["k2"] = map[string]hashEntries{}
+					r.registry.registry["k2"]["v2"] = hashEntries{he1, he3}
+					r.registry.registry["k2"]["v3"] = hashEntries{he2}
+
+					k := map[string]string{"k1": "v1"}
+					entries := r.Filter(k)
+					Expect(entries).To(HaveLen(2))
+					Expect(entries).To(ContainElement(Entry{
+						Key:   he1.keys,
+						Value: he1.value,
+					}))
+					Expect(entries).To(ContainElement(Entry{
+						Key:   he2.keys,
+						Value: he2.value,
+					}))
+				})
+				It("Then it should be placed on the cache", func() {
+					Expect(c.recentKeys).To(HaveLen(1))
+					Expect(c.cache).To(HaveLen(1))
+					Expect(c.cache[c.recentKeys[0]].(hashEntries)[0].value).To(Equal(1))
+				})
+			})
+			Context("When the key does not exist", func() {
+				It("Then nil should be returned", func() {
+					r := NewCacheRegistry()
+					k := map[string]string{"k1": "v1", "k2": "v2"}
+					he := &hashEntry{
+						keys:  k,
+						value: 1,
+					}
+					r.registry.registry["k1"] = map[string]hashEntries{}
+					r.registry.registry["k1"]["v1"] = hashEntries{he}
+					r.registry.registry["k2"] = map[string]hashEntries{}
+					r.registry.registry["k2"]["v2"] = hashEntries{he}
+
+					newK := map[string]string{"k1": "v0"}
+					Expect(r.Filter(newK)).To(HaveLen(0))
+				})
+			})
+			Context("When the key has already been retrieved", func() {
+				var r *CachedRegistry
+				var c *SimpleCache
+				It("Then the value should be returned from cache", func() {
+					r = NewCacheRegistry()
+					c = NewSimpleCache(1)
+					r.filterCache = c
+					k := map[string]string{"k1": "v1", "k2": "v2"}
+					he1 := &hashEntry{
+						keys:  k,
+						value: 1,
+					}
+					he2 := &hashEntry{
+						keys:  k,
+						value: 3,
+					}
+					r.registry.registry["k1"] = map[string]hashEntries{}
+					r.registry.registry["k1"]["v1"] = hashEntries{he1}
+					r.registry.registry["k2"] = map[string]hashEntries{}
+					r.registry.registry["k2"]["v2"] = hashEntries{he1}
+
+					Expect(r.Filter(k)).To(HaveLen(1))
+					Expect(r.Filter(k)[0].Value).To(Equal(1))
+
+					he1.value = 2 // set new value
+					// hack registry so that, if this value is returned, we know the cache was not used
+					r.registry.registry["k1"]["v1"] = hashEntries{he2}
+					r.registry.registry["k2"]["v2"] = hashEntries{he2}
+					Expect(r.Filter(k)[0].Value).To(Equal(2))
+
+					// force clear cache so we get value from registry
+					c.removeWithHash(toHashString(k))
+					Expect(r.Filter(k)[0].Value).To(Equal(3))
 				})
 				It("Then cache should not have grown", func() {
 					Expect(c.recentKeys).To(HaveLen(1))
