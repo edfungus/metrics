@@ -8,10 +8,6 @@ package registry
 
 */
 
-const (
-	cacheSize = 10
-)
-
 type CachedRegistry struct {
 	registry    *EvenBetterRegistry
 	getCache    Cache // caches gets. Should only have one Entry per cache key
@@ -20,7 +16,7 @@ type CachedRegistry struct {
 
 type hashEntries []*hashEntry
 
-func NewCacheRegistry() *CachedRegistry {
+func NewCacheRegistry(cacheSize int) *CachedRegistry {
 	return &CachedRegistry{
 		registry:    NewEvenBetterRegistry(),
 		getCache:    NewSimpleCache(cacheSize),

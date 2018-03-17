@@ -357,7 +357,7 @@ var _ = Describe("Registry", func() {
 				var r *CachedRegistry
 				var c *SimpleCache
 				It("Then the value should be returned", func() {
-					r = NewCacheRegistry()
+					r = NewCacheRegistry(1)
 					c = NewSimpleCache(1)
 					r.getCache = c
 					k := map[string]string{"k1": "v1", "k2": "v2"}
@@ -388,7 +388,7 @@ var _ = Describe("Registry", func() {
 			})
 			Context("When the key does not exist", func() {
 				It("Then nil should be returned", func() {
-					r := NewCacheRegistry()
+					r := NewCacheRegistry(1)
 					k := map[string]string{"k1": "v1", "k2": "v2"}
 					he := &hashEntry{
 						keys:  k,
@@ -407,7 +407,7 @@ var _ = Describe("Registry", func() {
 				var r *CachedRegistry
 				var c *SimpleCache
 				It("Then the value should be returned from cache", func() {
-					r = NewCacheRegistry()
+					r = NewCacheRegistry(1)
 					c = NewSimpleCache(1)
 					r.getCache = c
 					k := map[string]string{"k1": "v1", "k2": "v2"}
@@ -447,7 +447,7 @@ var _ = Describe("Registry", func() {
 				var r *CachedRegistry
 				var c *SimpleCache
 				It("Then the value should be returned", func() {
-					r = NewCacheRegistry()
+					r = NewCacheRegistry(1)
 					c = NewSimpleCache(1)
 					r.filterCache = c
 					k1 := map[string]string{"k1": "v1", "k2": "v2"}
@@ -495,7 +495,7 @@ var _ = Describe("Registry", func() {
 			})
 			Context("When the key does not exist", func() {
 				It("Then nil should be returned", func() {
-					r := NewCacheRegistry()
+					r := NewCacheRegistry(1)
 					k := map[string]string{"k1": "v1", "k2": "v2"}
 					he := &hashEntry{
 						keys:  k,
@@ -514,7 +514,7 @@ var _ = Describe("Registry", func() {
 				var r *CachedRegistry
 				var c *SimpleCache
 				It("Then the value should be returned from cache", func() {
-					r = NewCacheRegistry()
+					r = NewCacheRegistry(1)
 					c = NewSimpleCache(1)
 					r.filterCache = c
 					k := map[string]string{"k1": "v1", "k2": "v2"}
@@ -553,7 +553,7 @@ var _ = Describe("Registry", func() {
 		Describe("Given a user wants to set a value", func() {
 			Context("When the key exist", func() {
 				It("Then the value should be replaced", func() {
-					r := NewCacheRegistry()
+					r := NewCacheRegistry(1)
 					k1 := map[string]string{"k1": "v1", "k2": "v2"}
 					he1 := &hashEntry{
 						keys:  k1,
@@ -570,7 +570,7 @@ var _ = Describe("Registry", func() {
 			})
 			Context("When the key does not exist", func() {
 				It("Then a new entry should be made", func() {
-					r := NewCacheRegistry()
+					r := NewCacheRegistry(1)
 					k := map[string]string{"k1": "v1"}
 
 					Expect(r.registry.registry).To(HaveLen(0))
@@ -580,7 +580,7 @@ var _ = Describe("Registry", func() {
 			})
 			Context("When the key is already in the cache", func() {
 				It("Then the new value should be reflected in the cache", func() {
-					r := NewCacheRegistry()
+					r := NewCacheRegistry(1)
 					k := map[string]string{"k1": "v1", "k2": "v2"}
 					he1 := &hashEntry{
 						keys:  k,
@@ -609,7 +609,7 @@ var _ = Describe("Registry", func() {
 		Describe("Given a user wants to delete a key", func() {
 			Context("When the key exist", func() {
 				It("Then the value should be deleted from registry", func() {
-					r := NewCacheRegistry()
+					r := NewCacheRegistry(1)
 					k1 := map[string]string{"k1": "v1", "k2": "v2"}
 					r.Set(k1, 1)
 
@@ -619,7 +619,7 @@ var _ = Describe("Registry", func() {
 			})
 			Context("When the key does not exist", func() {
 				It("Then nothing will happen", func() {
-					r := NewCacheRegistry()
+					r := NewCacheRegistry(1)
 					k1 := map[string]string{"k1": "v1", "k2": "v2"}
 					r.Set(k1, 1)
 
@@ -630,7 +630,7 @@ var _ = Describe("Registry", func() {
 			})
 			Context("When the key exist also in both caches", func() {
 				It("Then the caches should be updated too", func() {
-					r := NewCacheRegistry()
+					r := NewCacheRegistry(5)
 					cf := NewSimpleCache(5)
 					cg := NewSimpleCache(5)
 					r.filterCache = cf
