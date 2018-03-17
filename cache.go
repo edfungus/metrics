@@ -11,17 +11,19 @@ const (
 )
 
 type Cache interface {
-	Get(k Key) (interface{}, error)
+	GetWithKey(k Key) (interface{}, error)
+	GetWithHash(h string) (interface{}, error)
 	UpdateWithKey(k Key, i interface{}) (cacheItemRemoved bool, cacheKeyRemoved string, cacheValueRemoved interface{})
 	UpdateWithHash(h string, i interface{}) (cacheItemRemoved bool, cacheKeyRemoved string, cacheValueRemoved interface{})
+	RemoveWithHash(h string)
 }
 
 // SimpleCache will store commomly requested Keys and the associated Entries that have those keys
 // The Entries will contain at least the Key BUT could have more than the specified keys
 type SimpleCache struct {
-	cache      map[string]interface{}
-	recentKeys []string
-	maxSize    int
+	cache      map[string]interface{} // Caches something based on hashed string
+	recentKeys []string               // In sync with the cache to keep track of cache entry recency
+	maxSize    int                    // Max size of cache
 }
 
 func NewSimpleCache(maxSize int) *SimpleCache {
@@ -32,10 +34,16 @@ func NewSimpleCache(maxSize int) *SimpleCache {
 	}
 }
 
-// Get get a value from the cache
-func (c *SimpleCache) Get(k Key) (interface{}, error) {
+// GetWithKey gets a value from the cache that matches complete key
+func (c *SimpleCache) GetWithKey(k Key) (interface{}, error) {
 	hashString := toHashString(k)
-	value := c.cache[hashString]
+	return c.GetWithHash(hashString)
+
+}
+
+// GetWithHash gets a value from the cache that matches the hashstring
+func (c *SimpleCache) GetWithHash(h string) (interface{}, error) {
+	value := c.cache[h]
 	if value != nil {
 		return value, nil
 	}
@@ -50,11 +58,16 @@ func (c *SimpleCache) UpdateWithKey(k Key, i interface{}) (cacheItemRemoved bool
 // UpdateWithHash adds a value to the cache. If cache size will be exceed, the oldest value is removed and also returned
 func (c *SimpleCache) UpdateWithHash(h string, i interface{}) (cacheItemRemoved bool, cacheKeyRemoved string, cacheValueRemoved interface{}) {
 	if _, ok := c.cache[h]; ok {
-		c.removeWithHash(h)
+		c.RemoveWithHash(h)
 	}
 	c.cache[h] = i
 	c.addToRecentKeys(h)
 	return c.checkCacheSize()
+}
+
+func (c *SimpleCache) RemoveWithHash(h string) {
+	c.removeFromRecentKeys(h)
+	delete(c.cache, h)
 }
 
 // checkCacheSize checks if size has met maxSize and if so, remove oldest cache item
@@ -65,13 +78,8 @@ func (c *SimpleCache) checkCacheSize() (exceeded bool, cacheKeyRemoved string, c
 	}
 	cacheKeyRemoved = c.recentKeys[0]
 	cacheValueRemoved = c.cache[cacheKeyRemoved]
-	c.removeWithHash(cacheKeyRemoved)
+	c.RemoveWithHash(cacheKeyRemoved)
 	return true, cacheKeyRemoved, cacheValueRemoved
-}
-
-func (c *SimpleCache) removeWithHash(h string) {
-	c.removeFromRecentKeys(h)
-	delete(c.cache, h)
 }
 
 func (c *SimpleCache) removeFromRecentKeys(h string) {

@@ -29,7 +29,7 @@ func NewCacheRegistry() *CachedRegistry {
 }
 
 func (c *CachedRegistry) Get(k Key) interface{} {
-	entries, err := c.getCache.Get(k)
+	entries, err := c.getCache.GetWithKey(k)
 	if err == nil {
 		return entries.(hashEntries)[0].value
 	}
@@ -41,10 +41,11 @@ func (c *CachedRegistry) Get(k Key) interface{} {
 	if cacheItemRemoved {
 		removeGetCacheKey(cacheValueRemoved.(hashEntries))
 	}
+	addGetCacheKey(entry, k)
 	return entry.value
 }
 func (c *CachedRegistry) Filter(k Key) []Entry {
-	entries, err := c.filterCache.Get(k)
+	entries, err := c.filterCache.GetWithKey(k)
 	if err == nil {
 		return toEntryArray(entries)
 	}
@@ -53,6 +54,7 @@ func (c *CachedRegistry) Filter(k Key) []Entry {
 	if cacheItemRemoved {
 		removeFilterCacheKey(cacheKeyRemoved, cacheValueRemoved.(hashEntries))
 	}
+	addFilterCacheKey(entries.(hashEntries), k)
 	return toEntryArray(entries)
 }
 
@@ -61,7 +63,25 @@ func (c *CachedRegistry) Set(k Key, i interface{}) {
 }
 
 func (c *CachedRegistry) Delete(k Key) {
-
+	entry := c.registry.Delete(k)
+	if entry == nil {
+		return
+	}
+	// Clean up entry from caches
+	c.getCache.RemoveWithHash(entry.getCacheKey)
+	for _, hashString := range entry.filterCacheKeys {
+		entries, err := c.filterCache.GetWithHash(hashString)
+		if err != nil {
+			// shouldn't get here, this means entry cache list and cache are out of sync
+			continue
+		}
+		entries, _ = removeFromHashEntries(entries.(hashEntries), k)
+		if len(entries.(hashEntries)) == 0 {
+			c.filterCache.RemoveWithHash(hashString)
+		} else {
+			c.filterCache.UpdateWithHash(hashString, entries)
+		}
+	}
 }
 
 /*
@@ -73,6 +93,10 @@ func removeGetCacheKey(deleteEntries hashEntries) {
 	for _, entry := range deleteEntries {
 		entry.getCacheKey = ""
 	}
+}
+
+func addGetCacheKey(entry *hashEntry, k Key) {
+	entry.getCacheKey = toHashString(k)
 }
 
 /*
@@ -88,6 +112,13 @@ func removeFilterCacheKey(deletedKey string, deleteEntries hashEntries) {
 				break
 			}
 		}
+	}
+}
+
+func addFilterCacheKey(entries hashEntries, k Key) {
+	cacheKey := toHashString(k)
+	for _, entry := range entries {
+		entry.filterCacheKeys = append(entry.filterCacheKeys, cacheKey)
 	}
 }
 

@@ -1,5 +1,9 @@
 package registry
 
+import (
+	"reflect"
+)
+
 /*
 
 	As I was writing CachedRegistry, I realized that I should just rewrite Better Registry
@@ -10,19 +14,11 @@ package registry
 
 type EvenBetterRegistry struct {
 	registry map[string]map[string]hashEntries
-	// keys    *hashKey // where string is key and value respectively
 }
-
-// // hashKey is essentially a Key with one value
-// type hashKey struct {
-// 	key   string
-// 	value string
-// 	// cacheKeys []string
-// }
 
 // hashEntry is essentially a Entry with an array which includes all the hashes this Entry is in
 type hashEntry struct {
-	keys            map[string]string
+	keys            Key
 	value           interface{}
 	getCacheKey     string   // A formed hash key (could be empty) for which this hashEntry is referred to in the cache
 	filterCacheKeys []string // List of form hash keys (string) for which this hashEntry is referred to in the cache
@@ -31,7 +27,6 @@ type hashEntry struct {
 func NewEvenBetterRegistry() *EvenBetterRegistry {
 	return &EvenBetterRegistry{
 		registry: map[string]map[string]hashEntries{},
-		// keys:     map[string]map[string]*hashKey{},
 	}
 }
 
@@ -71,8 +66,49 @@ func (r *EvenBetterRegistry) Set(k Key, i interface{}) {
 	entry.value = i
 }
 
-func (r *EvenBetterRegistry) Delete(k Key) {
+func (r *EvenBetterRegistry) Delete(k Key) *hashEntry {
+	var entry *hashEntry
+	for key, value := range k {
+		e := r.removeEntryFromAKey(key, value, k)
+		if e == nil {
+			return nil
+		}
+		entry = e
+	}
+	return entry
+}
 
+func (r *EvenBetterRegistry) removeEntryFromAKey(key string, value string, completeKey Key) *hashEntry {
+	values, ok := r.registry[key]
+	if !ok {
+		return nil
+	}
+	hashEntries, ok := values[value]
+	if !ok {
+		return nil
+	}
+	hashEntries, entry := removeFromHashEntries(hashEntries, completeKey)
+	if entry == nil {
+		return nil
+	}
+	// Some clean up before leaving
+	if len(hashEntries) == 0 {
+		delete(values, value)
+	}
+	if len(values) == 0 {
+		delete(r.registry, key)
+	}
+	return entry
+}
+
+func removeFromHashEntries(entries hashEntries, k Key) (hashEntries, *hashEntry) {
+	for i, e := range entries {
+		if reflect.DeepEqual(e.keys, k) {
+			entries = append(entries[:i], entries[i+1:]...)
+			return entries, e
+		}
+	}
+	return entries, nil
 }
 
 // getHashEntriesForKey returns all hashKeys that contain Key (which means the Key can contain MORE than the given Key)
@@ -81,10 +117,12 @@ func (r *EvenBetterRegistry) getHashEntriesForKey(k Key) map[string]hashEntries 
 	for key, value := range k {
 		_, ok := r.registry[key]
 		if !ok {
+			hashKeys[key] = hashEntries{}
 			continue
 		}
 		hashEntry, ok := r.registry[key][value]
 		if !ok {
+			hashKeys[key] = hashEntries{}
 			continue
 		}
 		hashKeys[key] = hashEntry

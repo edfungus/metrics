@@ -399,7 +399,7 @@ var _ = Describe("Registry", func() {
 					r.registry.registry["k2"] = map[string]hashEntries{}
 					r.registry.registry["k2"]["v2"] = hashEntries{he}
 
-					newK := map[string]string{"k1": "v1"}
+					newK := map[string]string{"k1": "v1", "k2": "v3"}
 					Expect(r.Get(newK)).To(BeNil())
 				})
 			})
@@ -433,7 +433,7 @@ var _ = Describe("Registry", func() {
 					Expect(r.Get(k)).To(Equal(2))
 
 					// force clear cache so we get value from registry
-					c.removeWithHash(toHashString(k))
+					c.RemoveWithHash(toHashString(k))
 					Expect(r.Get(k)).To(Equal(3))
 				})
 				It("Then cache should not have grown", func() {
@@ -484,6 +484,8 @@ var _ = Describe("Registry", func() {
 						Key:   he2.keys,
 						Value: he2.value,
 					}))
+					Expect(he1.filterCacheKeys).To(HaveLen(1))
+					Expect(he2.filterCacheKeys).To(HaveLen(1))
 				})
 				It("Then it should be placed on the cache", func() {
 					Expect(c.recentKeys).To(HaveLen(1))
@@ -539,7 +541,7 @@ var _ = Describe("Registry", func() {
 					Expect(r.Filter(k)[0].Value).To(Equal(2))
 
 					// force clear cache so we get value from registry
-					c.removeWithHash(toHashString(k))
+					c.RemoveWithHash(toHashString(k))
 					Expect(r.Filter(k)[0].Value).To(Equal(3))
 				})
 				It("Then cache should not have grown", func() {
@@ -604,6 +606,99 @@ var _ = Describe("Registry", func() {
 				})
 			})
 		})
+		Describe("Given a user wants to delete a key", func() {
+			Context("When the key exist", func() {
+				It("Then the value should be deleted from registry", func() {
+					r := NewCacheRegistry()
+					k1 := map[string]string{"k1": "v1", "k2": "v2"}
+					r.Set(k1, 1)
+
+					r.Delete(k1)
+					Expect(r.registry.registry).To(HaveLen(0))
+				})
+			})
+			Context("When the key does not exist", func() {
+				It("Then nothing will happen", func() {
+					r := NewCacheRegistry()
+					k1 := map[string]string{"k1": "v1", "k2": "v2"}
+					r.Set(k1, 1)
+
+					k2 := map[string]string{"k1": "v1"}
+					r.Delete(k2)
+					Expect(r.registry.registry).To(HaveLen(2))
+				})
+			})
+			Context("When the key exist also in both caches", func() {
+				It("Then the caches should be updated too", func() {
+					r := NewCacheRegistry()
+					cf := NewSimpleCache(5)
+					cg := NewSimpleCache(5)
+					r.filterCache = cf
+					r.getCache = cg
+
+					k1 := map[string]string{"k1": "v1", "k2": "v2"}
+					r.Set(k1, 1)
+
+					k2 := map[string]string{"k1": "v1", "k3": "v3"}
+					r.Set(k2, 1)
+
+					r.Get(k1)
+					r.Get(k2)
+					e := r.Filter(k1)
+					Expect(e).To(HaveLen(1))
+					Expect(cf.cache).To(HaveLen(1))
+					Expect(cg.cache).To(HaveLen(2))
+
+					r.Delete(k1)
+					Expect(r.registry.registry).To(HaveLen(2))
+					Expect(cf.cache).To(HaveLen(0))
+					Expect(cf.recentKeys).To(HaveLen(0))
+					Expect(cg.cache).To(HaveLen(1))
+					Expect(cg.recentKeys).To(HaveLen(1))
+				})
+			})
+		})
+	})
+	Describe("Even Better registry", func() {
+		Describe("Given wanting to remove hashEntry from a hashEntries", func() {
+			Context("When the key exist", func() {
+				It("Then the value should be returned and deleted", func() {
+					e1 := &hashEntry{
+						keys: map[string]string{"a": "b", "c": "d"},
+					}
+					e2 := &hashEntry{
+						keys: map[string]string{"a": "b", "c": "e"},
+					}
+					e3 := &hashEntry{
+						keys: map[string]string{"a": "b"},
+					}
+					entries := append(hashEntries{}, e1, e2, e3)
+					entries, entry := removeFromHashEntries(entries, e3.keys)
+					Expect(entry).ToNot(BeNil())
+					Expect(entry).To(Equal(e3))
+					Expect(entries).To(HaveLen((2)))
+					Expect(entries).To(ContainElement(e1))
+					Expect(entries).To(ContainElement(e2))
+				})
+			})
+			Context("When the key does not exist", func() {
+				It("Then the value should be returned and deleted", func() {
+					e1 := &hashEntry{
+						keys: map[string]string{"a": "b", "c": "d"},
+					}
+					e2 := &hashEntry{
+						keys: map[string]string{"a": "b", "c": "e"},
+					}
+					k3 := map[string]string{"a": "b"}
+					entries := append(hashEntries{}, e1, e2)
+					entries, entry := removeFromHashEntries(entries, k3)
+					Expect(entry).To(BeNil())
+					Expect(entries).To(HaveLen((2)))
+					Expect(entries).To(ContainElement(e1))
+					Expect(entries).To(ContainElement(e2))
+				})
+			})
+		})
 	})
 	Describe("Cache", func() {
 		Describe("Given a Key", func() {
@@ -646,14 +741,14 @@ var _ = Describe("Registry", func() {
 					})
 				})
 			})
-			Describe("func removeWithHash", func() {
+			Describe("func RemoveWithHash", func() {
 				Context("When removing a hash", func() {
 					It("Then both the cache and recentKeys is updated", func() {
 						c := NewSimpleCache(3)
 						c.cache["k1"] = 1
 						c.cache["k2"] = 2
 						c.recentKeys = []string{"k1", "k2"}
-						c.removeWithHash("k2")
+						c.RemoveWithHash("k2")
 						Expect(c.cache).To(HaveLen(1))
 						Expect(c.recentKeys[0]).To(Equal("k1"))
 					})
