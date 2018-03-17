@@ -57,8 +57,9 @@ func (c *CachedRegistry) Filter(k Key) []Entry {
 }
 
 func (c *CachedRegistry) Set(k Key, i interface{}) {
-
+	c.registry.Set(k, i)
 }
+
 func (c *CachedRegistry) Delete(k Key) {
 
 }

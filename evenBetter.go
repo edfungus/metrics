@@ -50,13 +50,27 @@ func (r *EvenBetterRegistry) Get(k Key) (*hashEntry, error) {
 	hashEntry.getCacheKey = toHashString(k)
 	return hashEntry, nil
 }
+
 func (r *EvenBetterRegistry) Filter(k Key) hashEntries {
 	hashEntries := r.getHashEntriesForKey(k)
 	return findUnionOfHashEntries(hashEntries)
 }
-func (r *EvenBetterRegistry) Set(k Key, i interface{}) {
 
+func (r *EvenBetterRegistry) Set(k Key, i interface{}) {
+	entry, err := r.Get(k)
+	if err != nil {
+		newEntry := &hashEntry{
+			keys:            k,
+			value:           i,
+			getCacheKey:     "",
+			filterCacheKeys: []string{},
+		}
+		r.addHashEntry(newEntry)
+		return
+	}
+	entry.value = i
 }
+
 func (r *EvenBetterRegistry) Delete(k Key) {
 
 }
@@ -92,4 +106,14 @@ func findUnionOfHashEntries(m map[string]hashEntries) hashEntries {
 		}
 	}
 	return entries
+}
+
+func (r *EvenBetterRegistry) addHashEntry(e *hashEntry) {
+	for key, value := range e.keys {
+		_, ok := r.registry[key]
+		if !ok {
+			r.registry[key] = map[string]hashEntries{}
+		}
+		r.registry[key][value] = append(r.registry[key][value], e)
+	}
 }

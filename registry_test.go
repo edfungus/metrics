@@ -351,7 +351,7 @@ var _ = Describe("Registry", func() {
 			})
 		})
 	})
-	Describe("Even Better registry", func() {
+	Describe("Cached registry", func() {
 		Describe("Given a user wants to get a value", func() {
 			Context("When the key exist", func() {
 				var r *CachedRegistry
@@ -545,6 +545,62 @@ var _ = Describe("Registry", func() {
 				It("Then cache should not have grown", func() {
 					Expect(c.recentKeys).To(HaveLen(1))
 					Expect(c.cache).To(HaveLen(1))
+				})
+			})
+		})
+		Describe("Given a user wants to set a value", func() {
+			Context("When the key exist", func() {
+				It("Then the value should be replaced", func() {
+					r := NewCacheRegistry()
+					k1 := map[string]string{"k1": "v1", "k2": "v2"}
+					he1 := &hashEntry{
+						keys:  k1,
+						value: 1,
+					}
+					r.registry.registry["k1"] = map[string]hashEntries{}
+					r.registry.registry["k1"]["v1"] = hashEntries{he1}
+					r.registry.registry["k2"] = map[string]hashEntries{}
+					r.registry.registry["k2"]["v2"] = hashEntries{he1}
+
+					r.Set(k1, 2)
+					Expect(r.Get(k1)).To(Equal(2))
+				})
+			})
+			Context("When the key does not exist", func() {
+				It("Then a new entry should be made", func() {
+					r := NewCacheRegistry()
+					k := map[string]string{"k1": "v1"}
+
+					Expect(r.registry.registry).To(HaveLen(0))
+					r.Set(k, 3)
+					Expect(r.Get(k)).To(Equal(3))
+				})
+			})
+			Context("When the key is already in the cache", func() {
+				It("Then the new value should be reflected in the cache", func() {
+					r := NewCacheRegistry()
+					k := map[string]string{"k1": "v1", "k2": "v2"}
+					he1 := &hashEntry{
+						keys:  k,
+						value: 1,
+					}
+					r.registry.registry["k1"] = map[string]hashEntries{}
+					r.registry.registry["k1"]["v1"] = hashEntries{he1}
+					r.registry.registry["k2"] = map[string]hashEntries{}
+					r.registry.registry["k2"]["v2"] = hashEntries{he1}
+
+					Expect(r.Get(k)).To(Equal(1))
+					r.Set(k, 2) // this sets the real entry value
+
+					// Replace entry in resgistry so that if the cache is not used, it will get the wrong value
+					he2 := &hashEntry{
+						keys:  k,
+						value: 3,
+					}
+					r.registry.registry["k1"]["v1"] = hashEntries{he2}
+					r.registry.registry["k2"]["v2"] = hashEntries{he2}
+
+					Expect(r.Get(k)).To(Equal(2))
 				})
 			})
 		})
