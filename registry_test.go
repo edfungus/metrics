@@ -1,3 +1,4 @@
+// +build all unit
 package registry
 
 import (
